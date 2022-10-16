@@ -1,0 +1,26 @@
+---
+title: Dictum
+
+help: Dictum API
+
+endpoints:
+  /api/dict:
+    GET:
+      return: list
+      sql: CALL GetDict()
+
+  /api/dict/word/:word:
+    args:
+      word: {type: string}
+
+    GET:
+      return: dict
+      sql: CALL GetWord(%(args.word)S)
+
+    PUT:
+      args:
+        description: {type: string, default: ''}
+      sql: CALL SetWord(%(args.word)S, %(args.description)S)
+
+    DELETE:
+      sql: CALL DeleteWord(%(args.word)S)
