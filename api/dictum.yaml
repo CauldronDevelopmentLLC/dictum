@@ -4,23 +4,54 @@ title: Dictum
 help: Dictum API
 
 endpoints:
-  /api/dict:
+  /((map)|(comp))/.*\.gz:
     GET:
-      return: list
-      sql: CALL GetDict()
+      headers: {Content-Encoding: gzip}
+      handler: pass
 
-  /api/dict/word/:word:
+  /api/words:
+    GET:
+      args:
+        tags: {type: string, optional: true}
+
+      return: list
+      sql: CALL GetWords(%(session.id)S, %(args.tags)S)
+
+  /api/words/:word:
     args:
       word: {type: string}
 
     GET:
-      return: dict
-      sql: CALL GetWord(%(args.word)S)
+      fields: ['*', 'tags']
+      sql: CALL GetWord(%(session.id)S, %(args.word)S)
+
+  /api/words/:word/tags/:tag:
+    args:
+      word: {type: string}
+      tag: {type: string}
+
+    PUT:
+      sql: CALL TagWord(%(session.id)S, %(args.word)S, %(args.tag)S)
+
+    DELETE:
+      sql: CALL UntagWord(%(session.id)S, %(args.word)S, %(args.tag)S)
+
+  /api/words/:word/notes:
+    args:
+      word: {type: string}
 
     PUT:
       args:
-        description: {type: string, default: ''}
-      sql: CALL SetWord(%(args.word)S, %(args.description)S)
+        notes: {type: string}
+      sql: CALL SetWordNotes(%(session.id)S, %(args.word)S, %(args.notes)S)
 
     DELETE:
-      sql: CALL DeleteWord(%(args.word)S)
+      sql: CALL DeleteWordNotes(%(session.id)S, %(args.word)S)
+
+  /api/tags:
+    GET:
+      args:
+        tags: {type: string, optional: true}
+
+      return: list
+      sql: CALL GetTags(%(session.id)S, %(args.tags)S)

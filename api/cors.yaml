@@ -1,0 +1,11 @@
+---
+hide: true
+endpoints:
+  /.*:
+    ANY:
+      handler: cors
+      credentials: true
+      headers: {Vary: Origin}
+      patterns:
+        - ".*://localhost(:\\d+)?"
+        - ".*://127.0.0.1(:\\d+)?"

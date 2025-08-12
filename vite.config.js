@@ -4,6 +4,7 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
   plugins: [vue()],
   server: {
+    watch: {ignored: ['**/map/**', '**/comp/**', '**/audio/**']},
     proxy: {
       '/api': 'http://localhost:7250'
     }

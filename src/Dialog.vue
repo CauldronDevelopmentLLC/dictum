@@ -29,6 +29,7 @@
 
 .dialog-container
   width 30em
+  max-width 100vw
   margin 0px auto
   background-color #fff
   border 2px solid #666

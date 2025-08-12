@@ -2,13 +2,13 @@
   "name": "dictum",
   "version": "0.0.1",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite dev",
     "build": "vite build",
     "serve": "vite preview",
     "watch": "vite build --watch"
   },
   "dependencies": {
-    "marked": "^4.1.1",
+    "fuse.js": "^6.6.2",
     "vue": "^3.2.37",
     "vue-router": "^4.0.16"
   },

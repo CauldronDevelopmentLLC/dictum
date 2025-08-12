@@ -1,17 +1,14 @@
-import {createRouter, createWebHistory} from 'vue-router'
+import {createRouter, createWebHashHistory} from 'vue-router'
 import DictView from './DictView.vue'
 import WordView from './WordView.vue'
-import util from './util.js'
+import TagView  from './TagView.vue'
 
 
 export default createRouter({
-  history: createWebHistory(),
+  history: createWebHashHistory(),
   routes: [
     {path: '/', component: DictView},
-    {
-      path: '/word',
-      component: WordView,
-      props: route => ({word: route.query.word})
-    },
+    {path: '/word/:word', component: WordView, props: true},
+    {path: '/tag/:name',  component: TagView,  props: true},
   ]
 })

@@ -1,3 +1,5 @@
+version: 1.0.0
+
 options:
   http-root: dist
 
@@ -6,5 +8,7 @@ title: Dictum API Docs
 help: >
   This page describes the JSON over HTTP API endpoints supported by this server.
 
-api:
+apis:
+  cors:   !include cors.yaml
+  auth:   !include auth.yaml
   dictum: !include dictum.yaml

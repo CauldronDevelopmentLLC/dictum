@@ -1,0 +1,37 @@
+---
+title: Authorization
+
+help: >
+  API Authorization login system uses OAuth2 and can support Google, Facebook,
+  or GitHub as login providers.
+
+endpoints:
+  /api/.*:
+    GET|PUT|POST|DELETE:
+      handler: session
+      return: dict
+      help: Look up session by ID.
+      sql: CALL AuthSession(%(session.id)S)
+
+  /api/login/:provider:
+    GET:
+      handler: login
+      headers: {Cache-Control: max-age=0}
+      args:
+        provider:
+          optional: true
+          enum: [google, facebook, github, providers]
+          help: >
+            The OAuth2 login provider or ``providers`` to list supported
+            providers.
+
+      sql: >
+        CALL AuthLogin(%(session.id)S, %(session.provider)S,
+          %(session.provider_id)S, %(session.user)S, %(session.name)S,
+          %(session.avatar)S)
+
+  /api/logout:
+    PUT:
+      handler: logout
+      sql: CALL AuthLogout(%(session.id)S)
+      help: Close the currently logged in session.
