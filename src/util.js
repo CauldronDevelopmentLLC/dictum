@@ -1,5 +1,11 @@
-let audio_url = 'https://translate.google.com.vn/translate_tts'
-audio_url += '?ie=UTF-8&tl=fi&client=tw-ob&q='
+function pad(t, c = ' ', count = 2) {
+  let s = '' + t
+  while (s.length < count) s = c + s
+  return s
+}
+
+
+function zpad(t, count = 2) {return pad(t, '0', count)}
 
 
 export default {
@@ -70,9 +76,29 @@ export default {
   },
 
 
-  tts(text) {
+  tts(text, lang = 'fi') {
     text = this.html_strip(text)
     text = text.replaceAll('[', '').replaceAll(']', '').replaceAll('*', '')
-    new Audio(audio_url + text).play()
+
+    let params = {ie: 'UTF-8', tl: lang, client: 'tw-ob', q: text}
+    let url = 'https://translate.google.com.vn/translate_tts?'
+    new Audio(url + new URLSearchParams(params).toString()).play()
+  },
+
+
+  time_interval(secs) {
+    if (!isFinite(secs)) return '???'
+    if (secs < 0) return '-' + this.time_interval(-secs)
+
+    if (secs < 60)             return Math.round(secs)           + ' secs'
+    if (secs < 60 * 60)        return Math.round(secs / 60)      + ' mins'
+    if (secs < 60 * 60 * 24)   return Math.round(secs / 60 / 60) + ' hours'
+    return Math.round(secs / 60 / 60 / 24) + ' days'
+  },
+
+
+  since(t, when = new Date) {
+    let secs = (new Date(t).getTime() - new Date(when).getTime()) / 1000
+    return this.time_interval(-secs)
   }
 }

@@ -3,7 +3,20 @@ export default {
   data() {
     return {
       search: '',
+      lang: localStorage.getItem('dictum-lang') || 'en',
+      user_tags: []
     }
+  },
+
+
+  watch: {
+    lang() {localStorage.setItem('dictum-lang', this.lang)}
+  },
+
+
+  async mounted() {
+    if (this.$user.name)
+      this.user_tags = await this.$api.get('/api/user/tags')
   },
 
 
@@ -37,9 +50,17 @@ export default {
 header
   router-link.title(to="/") Dictum
 
-  img.avatar(:src="$user.avatar", :title="'Logout ' + $user.name",
-    @click="logout", v-if="$user.name")
-  .fa.fa-sign-in(v-else, @click="login")
+  select.language(v-if="$route.path.indexOf('/word/') == 0",
+    v-model="lang", title="Select dictionary language")
+    option(value="en") EN
+    option(value="fi") FI
+
+  .logout.fa.fa-sign-out(v-if="$user.name && $route.path == '/account'",
+    @click="logout", title="Logout")
+
+  router-link(to="/account", v-if="$user.name", title="Account")
+    img.avatar(:src="$user.avatar")
+  .fa.fa-sign-in(v-else, @click="login", title="Login with Google")
 
 main
   form.search(@submit.prevent="lookup")
@@ -56,29 +77,71 @@ main
 
 <style lang="stylus">
 body
-  width 100vw
+  display flex
+  flex-direction column
+  width calc(100vw - 1em)
   margin 0
   font-size 90%
+  padding 0.5em
 
-button:not(:disabled)
+  > div
+    display flex
+    flex-direction column
+    gap 0.5em
+
+button
+  &:not(:disabled)
+    cursor pointer
+
+.button
   cursor pointer
+  text-decoration none
+  color #222
 
+  &:hover
+    opacity 0.6
+
+.button, button
+  display inline-flex
+  gap 0.5em
+  align-items center
+  padding 0.25em
+
+  .fa
+    font-size 16pt
+
+.word-tag.fa
+  font-size 24pt
+  color #bbb
+  cursor pointer
+  width 30px
+  text-align center
+
+  &.active
+    color gold
+
+  &:hover
+    opacity 0.6
 
 header
-  padding 0.25rem 0.5rem
-  font-size 150%
   display flex
   flex-direction row
   gap 0.5em
 
+  > *
+    height 48px
+
   .title
     flex 1
-    font-size 150%
+    font-size 24pt
     text-decoration none
     color #000
 
+  .language
+    font-size 16pt
+
   .fa
-    font-size 250%
+    font-size 36pt
     cursor pointer
 
   .avatar
@@ -92,7 +155,9 @@ header
       opacity 0.6
 
 main
-  padding 0.5rem
+  display flex
+  flex-direction column
+  gap 1em
 
   .search
     display flex

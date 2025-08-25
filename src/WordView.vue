@@ -248,7 +248,6 @@ export default {
 
   data() {
     return {
-      lang: localStorage.getItem('dictum-lang') || 'en',
       data: {tags: []},
       definition: 0,
       def_pos: undefined,
@@ -258,9 +257,6 @@ export default {
 
 
   watch: {
-    lang() {localStorage.setItem('dictum-lang', this.lang)},
-
-
     defs() {
       if (!this.defs.length) return
       if (this.defs.length <= this.definition) this.definition = 0
@@ -308,8 +304,8 @@ export default {
       let defs = []
 
       for (let def of (this.data.defs || []))
-        if ((this.lang == 'en' && def.lang == 'Finnish') ||
-            (this.lang == 'fi' && def.lang == 'Suomi'))
+        if ((this.$root.lang == 'en' && def.lang == 'Finnish') ||
+            (this.$root.lang == 'fi' && def.lang == 'Suomi'))
           defs.push(def)
 
       return defs
@@ -331,19 +327,7 @@ export default {
     tts(text) {this.$util.tts(text)},
     get_pos(pos) {return pos_names[pos] || pos},
     link_text(text) {return this.$util.link_text(text)},
-
-
-    async toggle_star() {
-      let i = this.data.tags.indexOf('star')
-      if (i == -1) {
-        await this.$api.put('/api/words/' + this.word + '/tags/star')
-        this.data.tags.push('star')
-
-      } else {
-        await this.$api.delete('/api/words/' + this.word + '/tags/star')
-        this.data.tags.splice(i, 1)
-      }
-    },
+    toggle_star() {this.toggle_tag('star')},
 
 
     async save_notes() {
@@ -360,6 +344,27 @@ export default {
     async delete_notes() {
       await this.$api.delete('/api/words/' + this.word + '/notes')
       this.data.notes = this.orig_notes = ''
+    },
+
+
+    async toggle_tag(tag) {
+      let i = this.data.tags.indexOf(tag)
+      if (i == -1) {
+        await this.$api.put('/api/words/' + this.word + '/tags/' + tag)
+        this.data.tags.push(tag)
+
+      } else {
+        await this.$api.delete('/api/words/' + this.word + '/tags/' + tag)
+        this.data.tags.splice(i, 1)
+      }
+    },
+
+
+    has_tag(tag) {return this.data.tags.indexOf(tag) != -1},
+
+
+    tag_classes(tag) {
+      return 'fa-' + tag + ' ' + (this.has_tag(tag) ? 'active' : 'inactive')
     }
   }
 }
@@ -367,38 +372,41 @@ export default {
 
 <template lang="pug">
 .word-view
-  h1.word-title
-    select(v-model="lang")
-      option(value="en") EN
-      option(value="fi") FI
+  .word-title
+    .word-defs
+      span(v-if="!defs.length") {{data.word}}
+      span(v-else-if="defs.length == 1")
+        | {{defs[0].word}} ({{get_pos(defs[0].pos)}})
 
-    span(v-if="!defs.length") {{data.word}}
-    span(v-else-if="defs.length == 1")
-      | {{defs[0].word}} ({{get_pos(defs[0].pos)}})
+      select(v-else, v-model="definition")
+        option(v-for="(d, index) in defs", :value="index")
+          | {{d.word}} ({{get_pos(d.pos)}})
 
-    select(v-else, v-model="definition")
-      option(v-for="(d, index) in defs", :value="index")
-        | {{d.word}} ({{get_pos(d.pos)}})
+      .audio.fa.fa-headphones(@click="tts(data.word)")
 
-    .audio.fa.fa-headphones(@click="tts(data.word)")
-
-    template(v-if="$user.name")
-      .fa.fa-star(:class="{star: data.tags.indexOf('star') != -1}",
+    .word-tags(v-if="$user.name")
+      .word-tag.fa.fa-star(:class="tag_classes('star')",
         v-if="(defs || []).length", @click="toggle_star")
 
-      .word-notes(v-if="!data.error")
-        form(@submit.prevent="save_notes")
-          input(v-model="data.notes", @keyup.enter="save_notes"
-            autocorrect="off" autocapitalize="none", placeholder="Enter notes")
-          button(@click.prevent="delete_notes", title="Delete notes.",
-            type="button")
-            .fa.fa-trash
-          button.save(type="submit", title="Save notes.",
-            :disabled="orig_notes == data.notes"): .fa.fa-save
+      .word-tag.fa(v-for="tag in $root.user_tags", :class="tag_classes(tag)",
+        @click="toggle_tag(tag)", :title="'Toggle ' + tag + ' tag'")
+
+  .word-notes(v-if="$user.name && !data.error")
+    form(@submit.prevent="save_notes")
+      input(v-model="data.notes", @keyup.enter="save_notes"
+        autocorrect="off" autocapitalize="none", placeholder="Enter notes",
+        title="Notes")
+      button(@click.prevent="delete_notes", title="Delete notes.",
+        type="button")
+        .fa.fa-trash
+      button.save(type="submit", title="Save notes.",
+        :disabled="orig_notes == data.notes"): .fa.fa-save
 
   h2.word-error(v-if="data.error") {{data.error}}
 
-  .word-root(v-if="roots", v-for="root in roots", v-html="root")
+  section(v-if="roots")
+    h3 Other Forms
+    .word-root(v-for="root in roots", v-html="root")
 
   .word-def(v-if="(defs || []).length",
     v-for="d in [defs[definition]]")
@@ -445,11 +453,25 @@ export default {
         h3 {{name.replaceAll('_', ' ')}}
         ul
           li(v-for="word in words", v-html="link_text(word)")
+
+    section(v-if="data.visits")
+      .word-visits(v-if="data.visits == 1")
+        | Visited once {{$util.since(data.last)}} ago.
+
+      .word-visits(v-else-if="1 < data.visits", :title="data.last")
+        | Visited {{data.visits}} times.  Last time was
+        | {{$util.since(data.last)}} ago.
+
 </template>
 
 <style lang="stylus">
 .word-view
-  max-width 65em
+  display flex
+  flex-direction column
+  gap 1em
+
+  > *
+    margin 0
 
   ul, ol
     padding-left 1.5em
@@ -457,6 +479,11 @@ export default {
     li
       > p
         margin 0.5em 0
+
+  section
+    > h2, > h3
+      &:first-of-type
+        margin-top 0
 
   .audio
     cursor pointer
@@ -469,16 +496,21 @@ export default {
     flex-wrap wrap
     align-items center
     gap 0.5em
+    font-size 16pt
 
-    select
-      font-size 100%
+    .word-defs
+      flex 1
+      display flex
+      align-items center
+      gap 0.5em
 
-    .fa-star
-      color #bbb
-      cursor pointer
+      > *
+        font-size 24pt
 
-      &.star
-        color gold
+    .word-tags
+      display flex
+      gap 0.25em
+      padding-right 0.25em
 
   .word-notes
     flex 1

@@ -6,6 +6,7 @@ export default {
 
   data() {
     return {
+      loading: true,
       tags: [],
       words: [],
       active_tag: 'all',
@@ -40,6 +41,7 @@ export default {
       if (this.active_tag != 'all') params = 'tags=' + this.active_tag
       this.words = await this.$api.get('/api/words', params)
       this.tags  = await this.$api.get('/api/tags')
+      this.loading = false
     },
 
 
@@ -57,7 +59,8 @@ export default {
 </script>
 
 <template lang="pug">
-.dict-view(@keyup.esc="reset()")
+h2(v-if="loading") Loading...
+.dict-view(v-else, @keyup.esc="reset()")
   select(v-model="active_tag")
     option(value="all") all
     option(v-for="tag in tags", :value="tag.name")

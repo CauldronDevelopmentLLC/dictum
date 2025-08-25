@@ -55,3 +55,28 @@ endpoints:
 
       return: list
       sql: CALL GetTags(%(session.id)S, %(args.tags)S)
+
+  /api/user/tags:
+    GET:
+      return: list
+      sql: CALL GetUserTags(%(session.id)S)
+
+  /api/user/tags/:tag:
+    args:
+      tag: {type: string}
+
+    PUT:
+      sql: CALL AddUserTag(%(session.id)S, %(args.tag)S)
+
+    DELETE:
+      sql: CALL DeleteUserTag(%(session.id)S, %(args.tag)S)
+
+  /api/user/history:
+    GET:
+      return: list
+      sql: CALL GetUserHistory(%(session.id)S)
+
+  /api/user/card/:uid/:tag:
+    GET:
+      return: list
+      sql: CALL GetWordsByUID(%(args.uid)u, %(args.tag)S)

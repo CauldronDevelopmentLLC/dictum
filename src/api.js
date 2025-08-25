@@ -20,7 +20,12 @@ class API {
     }
 
     let r = await fetch(path, opts)
-    if (method == 'GET') return r.ok ? await r.json() : {error: r}
+    if (method == 'GET') {
+      if (!r.ok) return {error: r}
+      let text = await r.text()
+      return text ? JSON.parse(text) : undefined
+    }
+
     return r
   }
 

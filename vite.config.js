@@ -6,7 +6,7 @@ export default defineConfig({
   server: {
     watch: {ignored: ['**/map/**', '**/comp/**', '**/audio/**']},
     proxy: {
-      '/api': 'http://localhost:7250'
+      '/api': 'https://dictum.coffland.com'
     }
   }
 })
