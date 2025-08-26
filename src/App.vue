@@ -30,7 +30,7 @@ export default {
     },
 
 
-    lookup() {this.$router.push('/word/' + this.search)},
+    lookup() {this.$router.push('/word/' + this.search.trim())},
 
 
     clear() {

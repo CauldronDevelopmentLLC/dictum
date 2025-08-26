@@ -22,9 +22,9 @@ export default {
 
   computed: {
     matches() {
-      let re = new RegExp(this.search, 'i')
+      let re = new RegExp(this.search.trim(), 'i')
       return this.words.filter(e =>
-        !this.search || re.test(e.word) || re.test(e.notes))
+        !this.search.trim() || re.test(e.word) || re.test(e.notes))
     }
   },
 
