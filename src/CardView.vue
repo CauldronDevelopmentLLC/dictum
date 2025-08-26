@@ -20,6 +20,8 @@ export default {
     return {
       words:      [],
       active:     0,
+      front:      {index: 0, text: ''},
+      back:       {index: 0, text: ''},
       flip:       false,
       loading:    true,
       auto_speak: false,
@@ -43,10 +45,45 @@ export default {
 
 
   methods: {
-    init() {
+    show_front() {
+      this.front.index = this.active + 1
+      this.front.text  = this.words[this.active].word
       this.flip = false
+    },
+
+
+    show_back() {
+      this.back.index = this.active + 1
+      this.back.text  = this.words[this.active].notes
+      this.flip = true
+    },
+
+
+    init() {
+      this.show_front()
       if (this.auto_speak) this.speak()
       this.stop()
+    },
+
+
+    next() {
+      this.active++
+      if (this.words.length <= this.active) this.active = 0
+      this.init()
+    },
+
+
+    prev() {
+      this.active--
+      if (this.active < 0) this.active = this.words.length - 1
+      this.init()
+    },
+
+
+    toggle() {
+      if (this.flip) this.show_front()
+      else this.show_back()
+      if (this.auto_speak) this.speak_card()
     },
 
 
@@ -54,8 +91,8 @@ export default {
 
 
     speak_card() {
-      if (this.flip) this.$util.tts(this.word.notes, 'en')
-      else this.$util.tts(this.word.word, 'fi')
+      if (this.flip) this.$util.tts(this.back.text, 'en')
+      else this.$util.tts(this.front.text, 'fi')
     },
 
 
@@ -63,7 +100,7 @@ export default {
       if (this.flip) {
         if (this.words.length - 1 <= this.active) {
           this.active = 0
-          this.flip = false
+          this.show_front()
           return
         }
 
@@ -93,26 +130,6 @@ export default {
     },
 
 
-    next() {
-      this.active++
-      if (this.words.length <= this.active) this.active = 0
-      this.init()
-    },
-
-
-    prev() {
-      this.active--
-      if (this.active < 0) this.active = this.words.length - 1
-      this.init()
-    },
-
-
-    toggle() {
-      this.flip = !this.flip
-      if (this.auto_speak) this.speak_card()
-    },
-
-
     shuffle() {
       shuffle(this.words)
       this.active = 0
@@ -132,18 +149,29 @@ export default {
 h3(v-if="loading") Loading...
 .card-view(v-else)
   .card(@click="toggle", v-if="words.length",
-    :class="'card-' + (flip ? 'back' : 'front')")
-    .card-header
-      .card-title {{flip ? 'Notes' : 'Word'}}
-      .card-position {{active + 1}} of {{words.length}}
+    :class="{'card-flipped': flip}")
+    .card-inner
+      .card-front
+        .card-header
+          .card-title Word
+          .card-position {{front.index}} of {{words.length}}
 
-    .card-main
-      .card-word(v-if="!flip") {{word.word}}
-      .card-notes(v-else) {{word.notes}}
+        .card-main {{front.text}}
 
-    .card-footer
-      .button.fa.fa-refresh
-      .button.fa.fa-headphones(@click.stop="speak_card")
+        .card-footer
+          .button.fa.fa-refresh
+          .button.fa.fa-headphones(@click.stop="speak_card")
+
+      .card-back
+        .card-header
+          .card-title Notes
+          .card-position {{back.index}} of {{words.length}}
+
+        .card-main {{back.text}}
+
+        .card-footer
+          .button.fa.fa-refresh
+          .button.fa.fa-headphones(@click.stop="speak_card")
 
   .actions
     .button.fa.fa-arrow-left(@click="prev")
@@ -162,13 +190,45 @@ h3(v-if="loading") Loading...
   .card
     display flex
     flex-direction column
+    cursor pointer
+    text-align center
+    background-color transparent
+    perspective 1000px
     width 30em
     max-width calc(100vw - 2em)
     height calc(30em / 1.618)
-    border-radius 6px
-    padding 0.5em
-    cursor pointer
-    text-align center
+
+    &.card-flipped .card-inner
+      transform rotateY(180deg)
+
+    .card-inner
+      position relative
+      width 100%
+      height 100%
+      display flex
+      text-align center
+      transition transform 0.6s
+      transform-style preserve-3d
+      border-radius 6px
+      box-shadow 0 4px 8px 0 rgba(0,0,0,0.2)
+
+    .card-front, .card-back
+      position absolute
+      display flex
+      flex-direction column
+      width calc(100% - 1em)
+      height calc(100% - 1em)
+      padding 0.5em
+      backface-visibility hidden
+      border-radius 6px
+      overflow hidden
+
+    .card-front
+      background-color #a2d1f3
+
+    .card-back
+      background-color #73d9cd
+      transform rotateY(180deg)
 
     .card-header, .card-footer
       display flex
@@ -177,22 +237,16 @@ h3(v-if="loading") Loading...
       .fa
         font-size 16pt
 
-    &.card-front
-      background-color #a2d1f3
-
-    &.card-back
-      background-color #73d9cd
-
     .card-main
       flex 1
       font-size 36pt
       padding 0.5em 0
 
-   .actions
-     display flex
-     justify-content space-between
-     font-size 30pt
+  .actions
+    display flex
+    justify-content space-between
+    font-size 30pt
 
-     .fa.active
-       color gold
+    .fa.active
+      color gold
 </style>
