@@ -26,6 +26,7 @@ export default {
 
     async logout() {
       await this.$api.logout()
+      await this.$router.push('/')
       location.reload()
     },
 

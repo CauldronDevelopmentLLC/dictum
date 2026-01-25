@@ -27,7 +27,9 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE TABLE IF NOT EXISTS words (
   id           INT AUTO_INCREMENT PRIMARY KEY,
   word         VARCHAR(128) NOT NULL UNIQUE,
+  kotus        INT UNSIGNED,
   freq         INT NOT NULL DEFAULT 0,
+  KEY (kotus),
   KEY (freq)
 ) CHARSET=utf8mb4 COLLATE utf8mb4_bin;
 
@@ -56,10 +58,11 @@ CREATE TABLE IF NOT EXISTS user_tags (
 ) CHARSET=utf8mb4 COLLATE utf8mb4_bin;
 
 
-CREATE TABLE IF NOT EXISTS word_notes (
+CREATE TABLE IF NOT EXISTS word_data (
   uid          INT,
   wid          INT,
-  text         TEXT,
+  notes        TEXT,
+  score        INT DEFAULT 0,
   PRIMARY KEY (uid, wid),
   FOREIGN KEY (uid) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (wid) REFERENCES words(id) ON DELETE CASCADE
@@ -76,94 +79,7 @@ CREATE TABLE IF NOT EXISTS history (
 ) CHARSET=utf8mb4 COLLATE utf8mb4_bin;
 
 
--- Words
-DELIMITER //
-DROP FUNCTION IF EXISTS GetWordID;
-CREATE FUNCTION GetWordID(_word VARCHAR(128))
-  RETURNS INT
-  READS SQL DATA
-BEGIN
-  SET @id = NULL;
-  SELECT id INTO @id FROM words WHERE word = _word;
-
-  IF ISNULL(@id) THEN
-    SIGNAL SQLSTATE '02000' SET MESSAGE_TEXT = 'Word not found.';
-  END IF;
-
-  RETURN @id;
-END //
-DELIMITER ;
-
-
-DELIMITER //
-DROP PROCEDURE IF EXISTS GetWordsByUID;
-CREATE PROCEDURE GetWordsByUID(IN _uid INT, IN _tags VARCHAR(256))
-SQL SECURITY DEFINER
-BEGIN
-  SET @num = LENGTH(_tags) - LENGTH(REPLACE(_tags, ',', '')) + 1;
-
-  IF ISNULL(_tags) THEN
-    SELECT w.word, wn.text notes FROM words w
-      LEFT JOIN word_notes wn ON wn.wid = w.id AND wn.uid = _uid
-      ORDER BY freq DESC LIMIT 10000;
-
-  ELSE
-    SELECT w.word, wn.text notes FROM word_tags wt
-      JOIN words w ON w.id = wt.wid
-      LEFT JOIN word_notes wn ON wn.wid = wt.wid AND wn.uid = _uid
-      WHERE (wt.uid = _uid OR wt.uid = 0) AND
-        tid IN (SELECT id FROM tags WHERE FIND_IN_SET(name, _tags))
-      GROUP BY wt.wid HAVING COUNT(tid) = @num ORDER BY freq DESC LIMIT 10000;
-  END IF;
-END //
-DELIMITER ;
-
-
-DELIMITER //
-DROP PROCEDURE IF EXISTS GetWords;
-CREATE PROCEDURE GetWords(IN _sid VARCHAR(48), IN _tags VARCHAR(256))
-SQL SECURITY DEFINER
-BEGIN
-  CALL GetWordsByUID(AuthLookupSID(_sid), _tags);
-END //
-DELIMITER ;
-
-
-DELIMITER //
-DROP PROCEDURE IF EXISTS GetWord;
-CREATE PROCEDURE GetWord(
-  IN _sid VARCHAR(48),
-  IN _word VARCHAR(128))
-SQL SECURITY DEFINER
-BEGIN
-  SET @uid = AuthSIDToUID(_sid);
-  SET @wid = GetWordID(_word);
-
-  -- Notes
-  SET @notes = NULL;
-  SELECT text INTO @notes FROM word_notes WHERE uid = @uid AND wid = @wid;
-
-  -- Visits
-  SELECT @notes notes, COUNT(*) visits, MAX(ts) last FROM history
-    WHERE uid = @uid AND wid = @wid;
-
-  -- Tags
-  SELECT t.name FROM word_tags wt
-    JOIN tags t ON t.id = wt.tid
-    WHERE (wt.uid = @uid OR wt.uid = 0) AND wt.wid = @wid
-    GROUP BY wt.tid;
-
-  -- History
-  START TRANSACTION;
-  SET @dayago = DATE_SUB(NOW(), INTERVAL 1 DAY);
-  DELETE FROM history WHERE uid = @uid AND wid = @wid AND @dayago < ts;
-  INSERT INTO history (uid, wid, ts) VALUES (@uid, @wid, NOW());
-  COMMIT;
-END //
-DELIMITER ;
-
-
--- Tags
+-- Functions
 DELIMITER //
 DROP FUNCTION IF EXISTS FindTagID;
 CREATE FUNCTION FindTagID(_name VARCHAR(16))
@@ -191,6 +107,81 @@ BEGIN
   END IF;
 
   RETURN @id;
+END //
+DELIMITER ;
+
+
+DELIMITER //
+DROP FUNCTION IF EXISTS GetWordID;
+CREATE FUNCTION GetWordID(_word VARCHAR(128))
+  RETURNS INT
+  READS SQL DATA
+BEGIN
+  SET @id = NULL;
+  SELECT id INTO @id FROM words WHERE word = _word;
+
+  IF ISNULL(@id) THEN
+    SIGNAL SQLSTATE '02000' SET MESSAGE_TEXT = 'Word not found.';
+  END IF;
+
+  RETURN @id;
+END //
+DELIMITER ;
+
+
+-- Words
+DELIMITER //
+DROP PROCEDURE IF EXISTS GetWord;
+CREATE PROCEDURE GetWord(
+  IN _sid VARCHAR(48),
+  IN _word VARCHAR(128))
+SQL SECURITY DEFINER
+BEGIN
+  SET @uid = AuthSIDToUID(_sid);
+  SET @wid = GetWordID(_word);
+
+  -- Data
+  SET @notes = NULL;
+  SET @score = NULL;
+  SELECT notes, score INTO @notes, @score FROM word_data
+    WHERE uid = @uid AND wid = @wid;
+
+  -- Data
+  SELECT @notes notes, @score score, COUNT(*) visits, MAX(ts) last FROM history
+    WHERE uid = @uid AND wid = @wid;
+
+  -- Tags
+  SELECT t.name FROM word_tags wt
+    JOIN tags t ON t.id = wt.tid
+    WHERE (wt.uid = @uid OR wt.uid = 0) AND wt.wid = @wid
+    GROUP BY wt.tid;
+
+  -- History
+  START TRANSACTION;
+  SET @dayago = DATE_SUB(NOW(), INTERVAL 1 DAY);
+  DELETE FROM history WHERE uid = @uid AND wid = @wid AND @dayago < ts;
+  INSERT INTO history (uid, wid, ts) VALUES (@uid, @wid, NOW());
+  COMMIT;
+END //
+DELIMITER ;
+
+
+-- Tags
+DELIMITER //
+DROP PROCEDURE IF EXISTS GetTag;
+CREATE PROCEDURE GetTag(IN _sid VARCHAR(48), IN _uid INT, IN _tag VARCHAR(256))
+SQL SECURITY DEFINER
+BEGIN
+  SET @uid = AuthLookupSID(_sid);
+  SET @tid = FindTagID(_tag);
+  SET @tagUID = IFNULL(_uid, @uid);
+
+  SELECT w.word, w.freq, wd1.notes, wd2.score FROM word_tags wt
+    JOIN words w ON w.id = wt.wid
+    LEFT JOIN word_data wd1 ON wd1.wid = wt.wid AND wd1.uid = @tagUID
+    LEFT JOIN word_data wd2 ON wd2.wid = wt.wid AND wd2.uid = @uid
+    WHERE (wt.uid = @tagUID OR wt.uid = 0) AND wt.tid = @tid
+    ORDER BY w.freq DESC LIMIT 10000;
 END //
 DELIMITER ;
 
@@ -265,7 +256,7 @@ END //
 DELIMITER ;
 
 
--- Word Notes
+-- Word Data
 DELIMITER //
 DROP PROCEDURE IF EXISTS SetWordNotes;
 CREATE PROCEDURE SetWordNotes(
@@ -274,37 +265,38 @@ CREATE PROCEDURE SetWordNotes(
   IN _notes TEXT)
 SQL SECURITY DEFINER
 BEGIN
-  INSERT INTO word_notes (uid, wid, text)
+  INSERT INTO word_data (uid, wid, notes)
     VALUES (AuthSIDToUID(_sid), GetWordID(_word), _notes)
-    ON DUPLICATE KEY UPDATE text = VALUES(text);
+    ON DUPLICATE KEY UPDATE notes = VALUES(notes);
 END //
 DELIMITER ;
 
 
 DELIMITER //
-DROP PROCEDURE IF EXISTS DeleteWordNotes;
-CREATE PROCEDURE DeleteWordNotes(IN _sid VARCHAR(48), IN _word VARCHAR(255))
+DROP PROCEDURE IF EXISTS SetWordScore;
+CREATE PROCEDURE SetWordScore(
+  IN _sid VARCHAR(48),
+  IN _word VARCHAR(255),
+  IN _score INT)
 SQL SECURITY DEFINER
 BEGIN
-  SET @uid = AuthSIDToUID(_sid);
-  SET @wid = GetWordID(_word);
-  DELETE FROM word_notes WHERE uid = @uid AND wid = @wid;
+  INSERT INTO word_data (uid, wid, score)
+    VALUES (AuthSIDToUID(_sid), GetWordID(_word), _score)
+    ON DUPLICATE KEY UPDATE score = VALUES(score);
 END //
 DELIMITER ;
 
 
 DELIMITER //
 DROP PROCEDURE IF EXISTS GetTags;
-CREATE PROCEDURE GetTags(IN _sid VARCHAR(48), IN _tags VARCHAR(256))
+CREATE PROCEDURE GetTags(IN _sid VARCHAR(48))
 SQL SECURITY DEFINER
 BEGIN
   SET @uid = AuthLookupSID(_sid);
 
-  SELECT COUNT(wt.tid) count, t.name FROM word_tags wt
+  SELECT COUNT(wt.tid) count, t.name, wt.uid FROM word_tags wt
     JOIN tags t on t.id = wt.tid
-    WHERE (wt.uid = 0 OR wt.uid = @uid) AND ISNULL(_tags) OR
-      wt.wid in (SELECT wid FROM word_tags wt JOIN tags t ON t.id = wt.tid
-        WHERE FIND_IN_SET(t.name, _tags))
+    WHERE wt.uid = 0 OR wt.uid = @uid
     GROUP BY wt.tid ORDER BY count DESC;
 END //
 DELIMITER ;
@@ -317,10 +309,10 @@ SQL SECURITY DEFINER
 BEGIN
   SET @uid = AuthSIDToUID(_sid);
 
-  SELECT w.word, n.text notes, DATE_FORMAT(h.ts, '%Y-%m-%dT%TZ') as `time`
+  SELECT w.word, d.notes, d.score, DATE_FORMAT(h.ts, '%Y-%m-%dT%TZ') as `time`
     FROM history h
     LEFT JOIN words w ON w.id = h.wid
-    LEFT JOIN word_notes n ON n.uid = @uid AND n.wid = h.wid
+    LEFT JOIN word_data d ON d.uid = @uid AND d.wid = h.wid
     WHERE h.uid = @uid
     ORDER BY h.ts DESC LIMIT 10000;
 END //

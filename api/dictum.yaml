@@ -9,14 +9,6 @@ endpoints:
       headers: {Content-Encoding: gzip}
       handler: pass
 
-  /api/words:
-    GET:
-      args:
-        tags: {type: string, optional: true}
-
-      return: list
-      sql: CALL GetWords(%(session.id)S, %(args.tags)S)
-
   /api/words/:word:
     args:
       word: {type: string}
@@ -45,16 +37,19 @@ endpoints:
         notes: {type: string}
       sql: CALL SetWordNotes(%(session.id)S, %(args.word)S, %(args.notes)S)
 
-    DELETE:
-      sql: CALL DeleteWordNotes(%(session.id)S, %(args.word)S)
+  /api/words/:word/score:
+    args:
+      word: {type: string}
+
+    PUT:
+      args:
+        score: {type: s8, help: 'Word score'}
+      sql: CALL SetWordScore(%(session.id)S, %(args.word)S, %(args.score)i)
 
   /api/tags:
     GET:
-      args:
-        tags: {type: string, optional: true}
-
       return: list
-      sql: CALL GetTags(%(session.id)S, %(args.tags)S)
+      sql: CALL GetTags(%(session.id)S)
 
   /api/user/tags:
     GET:
@@ -76,7 +71,12 @@ endpoints:
       return: list
       sql: CALL GetUserHistory(%(session.id)S)
 
-  /api/user/card/:uid/:tag:
+  /api/user/tag/:uid/:tag:
     GET:
       return: list
-      sql: CALL GetWordsByUID(%(args.uid)u, %(args.tag)S)
+      sql: CALL GetTag(%(session.id)S, %(args.uid)u, %(args.tag)S)
+
+  /api/tag/:tag:
+    GET:
+      return: list
+      sql: CALL GetTag(%(session.id)S, NULL, %(args.tag)S)

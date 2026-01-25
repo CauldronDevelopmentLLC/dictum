@@ -53,7 +53,7 @@ export default {
 <template lang="pug">
 .account-view
   section
-    h2 Tags
+    h2: router-link(to="/tags") Tags
     .user-tags
       .word-tag.fa(v-for="tag in all_tags", :class="get_tag_classes(tag)",
         :title="tag", @click="toggle_tag(tag)")

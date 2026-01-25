@@ -1,5 +1,6 @@
 <script>
 import Inflections from './Inflections.vue'
+import WordTags    from './WordTags.vue'
 
 
 const inflections = {
@@ -243,7 +244,7 @@ function apply(self, data) {
 
 export default {
   props: ['word'],
-  components: {Inflections},
+  components: {Inflections, WordTags},
 
 
   data() {
@@ -327,7 +328,7 @@ export default {
     tts(text) {this.$util.tts(text)},
     get_pos(pos) {return pos_names[pos] || pos},
     link_text(text) {return this.$util.link_text(text)},
-    toggle_star() {this.toggle_tag('star')},
+    toggle_star() {this.$refs.word_tags.toggle_tag('star')},
 
 
     async save_notes() {
@@ -342,30 +343,9 @@ export default {
 
 
     async delete_notes() {
-      await this.$api.delete('/api/words/' + this.word + '/notes')
+      await this.$api.put('/api/words/' + this.word + '/notes', {notes: ''})
       this.data.notes = this.orig_notes = ''
     },
-
-
-    async toggle_tag(tag) {
-      let i = this.data.tags.indexOf(tag)
-      if (i == -1) {
-        await this.$api.put('/api/words/' + this.word + '/tags/' + tag)
-        this.data.tags.push(tag)
-
-      } else {
-        await this.$api.delete('/api/words/' + this.word + '/tags/' + tag)
-        this.data.tags.splice(i, 1)
-      }
-    },
-
-
-    has_tag(tag) {return this.data.tags.indexOf(tag) != -1},
-
-
-    tag_classes(tag) {
-      return 'fa-' + tag + ' ' + (this.has_tag(tag) ? 'active' : 'inactive')
-    }
   }
 }
 </script>
@@ -384,12 +364,8 @@ export default {
 
       .audio.fa.fa-headphones(@click="tts(data.word)")
 
-    .word-tags(v-if="$user.name")
-      .word-tag.fa.fa-star(:class="tag_classes('star')",
-        v-if="(defs || []).length", @click="toggle_star")
-
-      .word-tag.fa(v-for="tag in $root.user_tags", :class="tag_classes(tag)",
-        @click="toggle_tag(tag)", :title="'Toggle ' + tag + ' tag'")
+    word-tags(v-if="$user.name && (defs || []).length", :word="word",
+      :tags="data.tags", ref="word_tags")
 
   .word-notes(v-if="$user.name && !data.error")
     form(@submit.prevent="save_notes")
@@ -506,11 +482,6 @@ export default {
 
       > *
         font-size 24pt
-
-    .word-tags
-      display flex
-      gap 0.25em
-      padding-right 0.25em
 
   .word-notes
     flex 1

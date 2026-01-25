@@ -6,10 +6,10 @@ export default {
 
   data() {
     return {
-      loading: true,
-      tags: [],
-      words: [],
-      active_tag: 'all',
+      loading:    true,
+      tags:       [],
+      words:      [],
+      active_tag: 'verb',
     }
   },
 
@@ -37,10 +37,9 @@ export default {
 
   methods: {
     async update() {
-      let params
-      if (this.active_tag != 'all') params = 'tags=' + this.active_tag
-      this.words = await this.$api.get('/api/words', params)
-      this.tags  = await this.$api.get('/api/tags')
+      this.loading = true
+      this.words   = await this.$api.get('/api/tag/' + this.active_tag)
+      this.tags    = await this.$api.get('/api/tags')
       this.loading = false
     },
 
@@ -59,25 +58,24 @@ export default {
 </script>
 
 <template lang="pug">
-h2(v-if="loading") Loading...
-.dict-view(v-else, @keyup.esc="reset()")
-  select(v-model="active_tag")
-    option(value="all") all
-    option(v-for="tag in tags", :value="tag.name")
-      | {{pluralize(tag.name)}} ({{format_count(tag.count)}})
+.dict-view(@keyup.esc="reset()")
+  h2(v-if="loading") Loading...
+  template(v-else)
+    select(v-model="active_tag")
+      option(v-for="tag in tags", :value="tag.name")
+        | {{pluralize(tag.name)}} ({{format_count(tag.count)}})
 
+    template(v-if="matches && matches.length")
+      .word-count(v-if="this.search")
+        | {{matches.length.toLocaleString()}}
+        | {{active_tag}}
+        | {{pluralize('match', matches.length)}}
 
-  template(v-if="matches && matches.length")
-    .word-count(v-if="this.search")
-      | {{matches.length.toLocaleString()}}
-      | {{active_tag == 'all' ? '' : active_tag}}
-      | {{pluralize('match', matches.length)}}
+      .word-count(v-else)
+        | {{matches.length.toLocaleString()}}
+        | {{pluralize(active_tag, matches.length)}}
 
-    .word-count(v-else)
-      | {{matches.length.toLocaleString()}}
-      | {{pluralize(active_tag == 'all' ? 'word' : active_tag, matches.length)}}
-
-  section: IndexView(:words="matches")
+    section: IndexView(:words="matches")
 </template>
 
 <style lang="stylus">
@@ -86,6 +84,9 @@ h2(v-if="loading") Loading...
   flex-direction column
   gap 0.5em
   min-width 20em
+
+  > h2
+    margin 0
 
   .word-count
     font-weight bold
