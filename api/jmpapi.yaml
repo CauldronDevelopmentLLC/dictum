@@ -1,12 +1,14 @@
-options:
-  http-root: dist
+---
+jmpapi: 1.2.0
 
-title: Dictum API Docs
+info:
+  title: Dictum API Docs
 
-help: >
-  This page describes the JSON over HTTP API endpoints supported by this server.
+  description: >
+    This page describes the JSON over HTTP API endpoints supported by this server.
 
-api:
+apis:
   cors:   !include cors.yaml
   auth:   !include auth.yaml
   dictum: !include dictum.yaml
+  files:  !include files.yaml

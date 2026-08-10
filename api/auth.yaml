@@ -7,31 +7,30 @@ help: >
 
 endpoints:
   /api/.*:
-    GET|PUT|POST|DELETE:
+    get|put|post|delete:
       handler: session
-      return: dict
       help: Look up session by ID.
-      sql: CALL AuthSession(%(session.id)S)
+      sql: CALL AuthSession({session.id})
 
-  /api/login/:provider:
-    GET:
+  /api/login/{provider}:
+    get:
       handler: login
       headers: {Cache-Control: max-age=0}
       args:
         provider:
-          optional: true
-          enum: [google, facebook, github, providers]
+          enum: [google, facebook, github, providers, '']
           help: >
             The OAuth2 login provider or ``providers`` to list supported
             providers.
+        redirect_uri: {type: uri, optional: true}
 
       sql: >
-        CALL AuthLogin(%(session.id)S, %(session.provider)S,
-          %(session.provider_id)S, %(session.user)S, %(session.name)S,
-          %(session.avatar)S)
+        CALL AuthLogin({session.id}, {session.provider},
+          {session.provider_id}, {session.user}, {session.name},
+          {session.avatar})
 
   /api/logout:
-    PUT:
+    put:
       handler: logout
-      sql: CALL AuthLogout(%(session.id)S)
+      sql: CALL AuthLogout({session.id})
       help: Close the currently logged in session.

@@ -1,0 +1,7 @@
+---
+hide: true
+endpoints:
+  /.*:
+    get:
+      path: '{options.http-root}'
+      index: index.html

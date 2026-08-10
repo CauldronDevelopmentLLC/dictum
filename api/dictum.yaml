@@ -5,78 +5,85 @@ help: Dictum API
 
 endpoints:
   /((map)|(comp))/.*\.gz:
-    GET:
+    get:
       headers: {Content-Encoding: gzip}
       handler: pass
 
-  /api/words/:word:
+  /api/words/{word}:
     args:
       word: {type: string}
 
-    GET:
+    get:
       fields: ['*', 'tags']
-      sql: CALL GetWord(%(session.id)S, %(args.word)S)
+      sql: CALL GetWord({session.id}, {args.word})
 
-  /api/words/:word/tags/:tag:
+  /api/words/{word}/tags/{tag}:
     args:
       word: {type: string}
       tag: {type: string}
 
-    PUT:
-      sql: CALL TagWord(%(session.id)S, %(args.word)S, %(args.tag)S)
+    put:
+      sql: CALL TagWord({session.id}, {args.word}, {args.tag})
 
-    DELETE:
-      sql: CALL UntagWord(%(session.id)S, %(args.word)S, %(args.tag)S)
+    delete:
+      sql: CALL UntagWord({session.id}, {args.word}, {args.tag})
 
-  /api/words/:word/notes:
+  /api/words/{word}/notes:
     args:
       word: {type: string}
 
-    PUT:
+    put:
       args:
         notes: {type: string}
-      sql: CALL SetWordNotes(%(session.id)S, %(args.word)S, %(args.notes)S)
+      sql: CALL SetWordNotes({session.id}, {args.word}, {args.notes})
 
-  /api/words/:word/score:
+  /api/words/{word}/score:
     args:
       word: {type: string}
 
-    PUT:
+    put:
       args:
         score: {type: s8, help: 'Word score'}
-      sql: CALL SetWordScore(%(session.id)S, %(args.word)S, %(args.score)i)
+      sql: CALL SetWordScore({session.id}, {args.word}, {args.score})
 
   /api/tags:
-    GET:
+    get:
       return: list
-      sql: CALL GetTags(%(session.id)S)
+      sql: CALL GetTags({session.id})
 
   /api/user/tags:
-    GET:
+    get:
       return: list
-      sql: CALL GetUserTags(%(session.id)S)
+      sql: CALL GetUserTags({session.id})
 
-  /api/user/tags/:tag:
+  /api/user/tags/{tag}:
     args:
       tag: {type: string}
 
-    PUT:
-      sql: CALL AddUserTag(%(session.id)S, %(args.tag)S)
+    put:
+      sql: CALL AddUserTag({session.id}, {args.tag})
 
-    DELETE:
-      sql: CALL DeleteUserTag(%(session.id)S, %(args.tag)S)
+    delete:
+      sql: CALL DeleteUserTag({session.id}, {args.tag})
 
   /api/user/history:
-    GET:
+    get:
       return: list
-      sql: CALL GetUserHistory(%(session.id)S)
+      sql: CALL GetUserHistory({session.id})
 
-  /api/user/tag/:uid/:tag:
-    GET:
-      return: list
-      sql: CALL GetTag(%(session.id)S, %(args.uid)u, %(args.tag)S)
+  /api/user/tag/{uid}/{tag}:
+    args:
+      uid: {type: u32}
+      tag: {type: string}
 
-  /api/tag/:tag:
-    GET:
+    get:
       return: list
-      sql: CALL GetTag(%(session.id)S, NULL, %(args.tag)S)
+      sql: CALL GetTag({session.id}, {args.uid}, {args.tag})
+
+  /api/tag/{tag}:
+    args:
+      tag: {type: string}
+
+    get:
+      return: list
+      sql: CALL GetTag({session.id}, NULL, {args.tag})

@@ -2,7 +2,7 @@
 hide: true
 endpoints:
   /.*:
-    ANY:
+    any:
       handler: cors
       credentials: true
       headers: {Vary: Origin}
